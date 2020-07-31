@@ -106,7 +106,7 @@ class Camera():
         except:
             pass
         globe.view(screen, [0,0], self.coordinate[:2])
-        guy.view(screen, self.coordinate[:2])
+        guy.view(screen)
 
     def coordinate_update(self, velocity):
         self.coordinate[0] -= velocity[0]
@@ -142,7 +142,7 @@ class Player():
 
         self.sprite = 'data/sprite-7-small.png'
         
-    def view(self, screen, camera_coordinate):
+    def view(self, screen, camera_coordinate = [0,0]):
         self.position[0] -= camera_coordinate[0]
         self.position[1] -= camera_coordinate[1] ##you are flagrantly misusing model and view representation here
         self.screen = screen
@@ -165,7 +165,7 @@ class Player():
 
         if self.orientation is not None:
             return velocity[orientation], self.sprite_sheet[orientation]
-        else: return [0,0], 'data/sprite-7-small.png'
+        else: return [0,0], self.sprite
 
     def update_position(self, velocity = None):
         self.position[0] += 0#self.velocity[0]
@@ -200,6 +200,7 @@ class Globe():
         self.viewable_tiles = self.tilemap[origin[1]:origin[1] + self.Globe_Height, origin[0]:origin[0] + self.Globe_Width] # this is awful and confusing but too bad!
 
     def create_viewing_window(self, camera_coordinate = [0,0]):
+        self.drawing_head = camera_coordinate
         for row in self.viewable_tiles:
             for ID in row:
                 if ID not in self.raw_bytes_dict:
@@ -260,6 +261,7 @@ def handleEvents(interactiveVector = None):
 
     if keyup:
         main_guy.velocity = [0, 0]
+        main_guy.move()
 
     
 
@@ -285,5 +287,3 @@ def main():
         
 if __name__ == "__main__":
     main()
-
-
