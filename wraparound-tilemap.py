@@ -95,22 +95,23 @@ class Camera():
 ##    The X- and Y- axes of Camera and Film coords are inverted from the Pixel Coords (top-left origin),
 ##    and the Z-axis is the optical axis
 ##    f is the focal distance from the viewing plane (film coords (x, y, f))
-##   
 
-    def __init__(self, coordinate = [0,0,0]):
+
+    def __init__(self, coordinate = [0,0]):
         self.coordinate = coordinate
 
     def capture(self, globe, guy):
-        try:
-            self.coordinate_update(guy.velocity)
-        except:
-            pass
-        globe.view(screen, [0,0], self.coordinate[:2])
-        guy.view(screen)
+        self.coordinate_update(guy.velocity)
+        globe.view([-self.coordinate[0], -self.coordinate[1]])
+        guy.view()
+
 
     def coordinate_update(self, velocity):
-        self.coordinate[0] -= velocity[0]
-        self.coordinate[1] -= velocity[1]
+        self.coordinate[0] += velocity[0]
+        self.coordinate[1] += velocity[1]
+
+        
+
         
 
     
@@ -138,30 +139,30 @@ class Player():
         self.position = coordinate
         self.orientation = 0
         #zero orientation is down, 1 is right, 2 is up, 3 is left
+        
         self.sprite_sheet = ["data/sprite-6-small.png", "data/sprite-5-small.png", "data/sprite-0-small.png", "data/sprite-9-small.png"]
 
         self.sprite = 'data/sprite-7-small.png'
+        self.velocity = [0,0]
         
-    def view(self, screen, camera_coordinate = [0,0]):
-        self.position[0] -= camera_coordinate[0]
-        self.position[1] -= camera_coordinate[1] ##you are flagrantly misusing model and view representation here
-        self.screen = screen
+    def view(self):
+        
         fname = self.sprite
         new_surface = pygame.image.load(fname)
         new_surface = new_surface.convert()
         colorkey = new_surface.get_at((0,0))
         new_surface.set_colorkey(colorkey, RLEACCEL)
         
-        self.screen.blit(new_surface, self.position[:2])
+        screen.blit(new_surface, self.position[:2])
 
     def move(self, orientation=None):
         self.orientation = orientation
         self.velocity, self.sprite = self.from_orientation(self.orientation)
-        self.update_position(self.velocity)      
+        self.update_position(self.velocity)
         
     def from_orientation(self, orientation = None):
         
-        velocity = [[0,1],[1,0],[0,-1],[-1,0]] #down, right, up, left
+        velocity = [[0,2],[2,0],[0,-2],[-2,0]] #down, right, up, left
 
         if self.orientation is not None:
             return velocity[orientation], self.sprite_sheet[orientation]
@@ -188,36 +189,30 @@ class Globe():
 
         self.raw_bytes_dict = {}
         
-    def view(self, screen, origin = [0,0], camera_coordinate = [0,0]):          #origin tells where to start reading at the tilemap
-        self.screen = screen
-        self.drawing_head = camera_coordinate      
-
-        self.set_viewable_tiles(origin)
+    def view(self, camera_coordinate = [0,0]):          #origin tells where to start reading at the tilemap     
+        
+        self.viewable_tiles = self.tilemap
 
         self.create_viewing_window(camera_coordinate)
-        
-    def set_viewable_tiles(self, origin):
-        self.viewable_tiles = self.tilemap[origin[1]:origin[1] + self.Globe_Height, origin[0]:origin[0] + self.Globe_Width] # this is awful and confusing but too bad!
 
     def create_viewing_window(self, camera_coordinate = [0,0]):
-        self.drawing_head = camera_coordinate
-        for row in self.viewable_tiles:
+        
+        self.drawing_head = []
+        for i in range(len(camera_coordinate)):
+            self.drawing_head.append(camera_coordinate[i]) 
+                                    
+        for row in self.tilemap:            
             for ID in row:
-                if ID not in self.raw_bytes_dict:
-                    image = Image.open('data' + texture_farm[ID])
-                    self.raw_bytes_dict[ID] = (image.tobytes(), image.size, image.mode)
-                new_surface = pygame.image.fromstring(*self.raw_bytes_dict[ID])
-                self.screen.blit(new_surface, self.drawing_head)
+                
+                new_surface = pygame.image.load("data" + texture_farm[ID])
+                screen.blit(new_surface, self.drawing_head)
                 self.drawing_head[0] += x_pixels
+                
+                
             self.drawing_head[0] = camera_coordinate[0]
+           
             self.drawing_head[1] += y_pixels
-
-##    def update_viewing_model(self, Min_x = 0, Min_y = 0):
-##        for j in range(self.Globe_Height):
-##            for i in range(self.Globe_Width):
-##                ## lol I still don't know whow to keep these indices straight
-##                ## we should do the tilemap multiple-pointer method here to keep track of shifting camera movements and keep everything on the screen
-            
+        
      
 """
 Run-once code
@@ -227,9 +222,8 @@ def setup():
     tilemap = tmpc.creator()
     g = Globe(tilemap) # creates model for game environment
     main_guy = Player([width // 2, height //2, 0])
-    g.view(screen)
+    g.view()
     c = Camera()
-
     
     return g, main_guy, c
     
@@ -271,6 +265,7 @@ def handleEvents(interactiveVector = None):
         
 def main():
     g, main_guy, c = setup()
+    
     quitted = False
     while not quitted:
         
@@ -287,3 +282,5 @@ def main():
         
 if __name__ == "__main__":
     main()
+
+
