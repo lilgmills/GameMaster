@@ -43,44 +43,6 @@ player_anim_sprite = {playermode[0]: [f"data/sprites/sprite-{i}-small.png" for i
                     playermode[3]: [f"data/sprites/sprite-{i}-small.png" for i in [9, 10, 11]],
                     }
 
-
-
-class Camera():
-    def __init__(self):
-        pass
-        
-    def DrawRender(self, screen, Player, Tilemap = [[1, 0, 1, 0, 1],[0, 1, 0, 1, 0],[1, 0, 1, 0, 1],[0, 1, 0, 1, 0],[1, 0, 1, 0, 1]], photomode = COLORS):
-        if Tilemap.shape[0] > TILEMAP_W or Tilemap.shape[1] > TILEMAP_H:
-            Tilemap = Tilemap[:TILEMAP_W, :TILEMAP_H]
-        screen_offset_x = 0
-        screen_offset_y = 0
-        for Left_start_col in Tilemap:
-            for topmost_ID in Left_start_col:
-                if photomode == REALISTIC:
-                    new_surface = pygame.image.load(textures[texture_ID[topmost_ID]][1])
-                    screen.blit(new_surface, [screen_offset_x, screen_offset_y])
-                if photomode == COLORS:
-                    new_rect = pygame.Rect(screen_offset_x, screen_offset_y, TILESIZE_X, TILESIZE_Y)
-                    new_surface = pygame.draw.rect(screen, colors[topmost_ID], new_rect)
-                    
-                screen_offset_y += TILESIZE_Y
-                
-            screen_offset_x += TILESIZE_X
-            screen_offset_y = 0
-
-            #vertical scan lines!
-                
-
-        if Player.viewable:
-            new_surface = pygame.image.load(Player.sprite)
-            new_surface = new_surface.convert()
-            colorkey = new_surface.get_at((0,0))
-            new_surface.set_colorkey(colorkey, RLEACCEL)
-            
-            screen.blit(new_surface, [Player.X, Player.Y])
-        
-                
-            
 class Player():
     def __init__(self, world_coordinate = [width // 2, height // 2]):
         self.X = world_coordinate[0]
@@ -121,9 +83,10 @@ class Player():
 
 class Logicstate():
     #A state should have at least three methods: handle its own events, update the game world, and draw something different on the screen
-    def __init__(self, player = None):
+    def __init__(self, Player, Tilemap):
         self.origin = [0,0]
-        self.player = player
+        self.Player = Player
+        self.Tilemap = Tilemap
 
         self.keyup = False
 
@@ -147,41 +110,74 @@ class Logicstate():
         keys = pygame.key.get_pressed()
             
         if keys[K_DOWN] or keys[ord('s')]:
-            self.player.mode = 'down'
-            self.player.walking = True
+            self.Player.mode = 'down'
+            self.Player.walking = True
+            
         elif keys[K_RIGHT] or keys[ord('d')]:
-            self.player.mode = 'right'
-            self.player.walking = True
+            self.Player.mode = 'right'
+            self.Player.walking = True
         elif keys[K_UP] or keys[ord('w')]:
-            self.player.mode = 'up'
-            self.player.walking = True
+            self.Player.mode = 'up'
+            self.Player.walking = True
         elif keys[K_LEFT] or keys[ord('a')]:
-            self.player.mode = 'left'
-            self.player.walking = True
+            self.Player.mode = 'left'
+            self.Player.walking = True
 
         if not keys[K_LEFT] and not keys[K_UP] and not keys[K_RIGHT] and not keys[K_DOWN]:
             if not keys[ord('s')] and not keys[ord('d')] and not keys[ord('w')] and not keys[ord('a')]:
-                self.player.walking = False
+                self.Player.walking = False
             
 
         
     def update_logic_state(self):
         
-        if self.player.walking:
+        if self.Player.walking:
             self.time_walk -= 1
             if self.time_walk < 0:
                 
-                self.player.step_animation()
+                self.Player.step_animation()
                     
                 self.time_walk = 5
-            self.player.accelerate()
-            self.player.update_position()
+            self.Player.accelerate()
+            self.Player.update_position()
             
 
         else:
-            self.player.sprite = player_anim_sprite[self.player.mode][1]
-            self.player.velocity_x = 0
-            self.player.velocity_y = 0
+            self.Player.sprite = player_anim_sprite[self.Player.mode][1]
+            self.Player.velocity_x = 0
+            self.Player.velocity_y = 0
+            
+
+    def DrawRender(self, screen, photomode = COLORS):
+        if self.Tilemap.shape[0] > TILEMAP_W or self.Tilemap.shape[1] > TILEMAP_H:
+            temp_draw_Tilemap = self.Tilemap[:TILEMAP_W, :TILEMAP_H]
+        
+        screen_offset_x = 0
+        screen_offset_y = 0
+        for Left_start_col in temp_draw_Tilemap:
+            for topmost_ID in Left_start_col:
+                if photomode == REALISTIC:
+                    new_surface = pygame.image.load(textures[texture_ID[topmost_ID]][1])
+                    screen.blit(new_surface, [screen_offset_x, screen_offset_y])
+                if photomode == COLORS:
+                    new_rect = pygame.Rect(screen_offset_x, screen_offset_y, TILESIZE_X, TILESIZE_Y)
+                    new_surface = pygame.draw.rect(screen, colors[topmost_ID], new_rect)
+                    
+                screen_offset_y += TILESIZE_Y
+                
+            screen_offset_x += TILESIZE_X
+            screen_offset_y = 0
+
+                #vertical scan lines!
+                
+
+        if self.Player.viewable:
+            new_surface = pygame.image.load(self.Player.sprite)
+            new_surface = new_surface.convert()
+            colorkey = new_surface.get_at((0,0))
+            new_surface.set_colorkey(colorkey, RLEACCEL)
+            
+            screen.blit(new_surface, [self.Player.X, self.Player.Y])
             
 
 def main():
