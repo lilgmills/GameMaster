@@ -12,9 +12,9 @@ white = 255, 255, 255
 background = 0, 140, 178
 
 
-TILESIZE = 60
+TILESIZE = 8
 TILESIZE_X = TILESIZE
-TILESIZE_Y = TILESIZE
+TILESIZE_Y = 4
 
 TILEMAP_W = width // TILESIZE_X + 1
 
@@ -22,13 +22,18 @@ TILEMAP_H = height // TILESIZE_Y + 1
 
 MAP_TOTAL = (TILEMAP_W)*(TILEMAP_H)
 
+COLORS=1
+REALISTIC=2
+
 texture_file = 'data/resize60/'
 
 texture_ID = ['water', 'sand', 'grass']
 
-textures = {texture_ID[0]:[texture_file + f"water-files/water-plain-{i}.png" for i in range(60)],
-            texture_ID[1]:[texture_file + f"sand-files/sand-texture-{i}.png" for i in range(49)],
-            texture_ID[2]:[texture_file + f"grass-files/grass-texture-{i}.png" for i in range(6)]}
+textures = {'water':[texture_file + f"water-files/water-plain-{i}.png" for i in range(60)],
+            'sand':[texture_file + f"sand-files/sand-texture-{i}.png" for i in range(49)],
+            'grass':[texture_file + f"grass-files/grass-texture-{i}.png" for i in range(6)]}
+
+colors = [[0,0,150], [180, 180, 40],  [233, 245, 100], [00, 180, 39],]
 
 playermode = ['down', 'right', 'up', 'left']
 
@@ -44,18 +49,23 @@ class Camera():
     def __init__(self):
         pass
         
-    def DrawRender(self, screen, Player, Tilemap = [[1, 0, 1, 0, 1],[0, 1, 0, 1, 0],[1, 0, 1, 0, 1],[0, 1, 0, 1, 0],[1, 0, 1, 0, 1]]):
+    def DrawRender(self, screen, Player, Tilemap = [[1, 0, 1, 0, 1],[0, 1, 0, 1, 0],[1, 0, 1, 0, 1],[0, 1, 0, 1, 0],[1, 0, 1, 0, 1]], photomode = COLORS):
         if Tilemap.shape[0] > TILEMAP_W or Tilemap.shape[1] > TILEMAP_H:
             Tilemap = Tilemap[:TILEMAP_W, :TILEMAP_H]
         screen_offset_x = 0
         screen_offset_y = 0
         for Left_start_col in Tilemap:
             for topmost_ID in Left_start_col:
-                new_surface = pygame.image.load(textures[texture_ID[topmost_ID]][3])
-                screen.blit(new_surface, [screen_offset_x, screen_offset_y])
-                screen_offset_y += TILESIZE
+                if photomode == REALISTIC:
+                    new_surface = pygame.image.load(textures[texture_ID[topmost_ID]][1])
+                    screen.blit(new_surface, [screen_offset_x, screen_offset_y])
+                if photomode == COLORS:
+                    new_rect = pygame.Rect(screen_offset_x, screen_offset_y, TILESIZE_X, TILESIZE_Y)
+                    new_surface = pygame.draw.rect(screen, colors[topmost_ID], new_rect)
+                    
+                screen_offset_y += TILESIZE_Y
                 
-            screen_offset_x += TILESIZE
+            screen_offset_x += TILESIZE_X
             screen_offset_y = 0
 
             #vertical scan lines!
