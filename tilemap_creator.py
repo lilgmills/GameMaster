@@ -1,22 +1,35 @@
 """TileMap creator"""
 """Trying different patterns for painting tile maps"""
 import numpy as np
-
-def creator():
-    tiles_x = 28
-    tiles_y = 16
-
-    row_of_ocean = [0 for _ in range(tiles_x)]
-    start = 5
-    length = 5
-    row_of_island = [0 for _ in range(start)] + [1 for _ in range(length)] + [0 for _ in range(start + length, tiles_x)]
-
-    tmpland = [row_of_ocean for _ in range(start)] + [row_of_island for _ in range(length)] + [row_of_ocean for _ in range(start + length, tiles_y) ]
+from PIL import Image
+def creator(fname):
+    image = Image.open(fname)
+    data = np.asarray(image)
     
-    data = np.asarray(tmpland)
-    print (data)
+    data_dict = {}
+    ID = 0
+    j = 0
+    i = 0
+    for row in data:
+        for point in row:
+            if not str(point) in data_dict:
+                data_dict[str(point)] = ID
+                ID+=1
+                with open("codes.txt", "a+") as f:
+                    f.write(f"{ID}, {str(point)}")            
+        
+    tilemap = [[data_dict[str(point)] for point in data[i]] for i in range(data.shape[0])]
 
-    return data
+    return np.asarray(tilemap)
+
+def read_tilemap(fname, TESTWIDTH, TESTHEIGHT):  #works with a csv created from a png
+        with open (fname, 'r') as f:
+            lines = f.readlines()
+            tilemap_IDs_Data = [row.split(',')[:-1] for row in lines]
+
+        tilemap_IDs_testcrop = tilemap_IDs_Data[:TESTHEIGHT][:TESTWIDTH]
+        
+        return tilemap_IDs_testcrop
 
 def main():
     creator()
