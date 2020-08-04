@@ -8,8 +8,6 @@ def creator(fname):
     
     data_dict = {}
     ID = 0
-    j = 0
-    i = 0
     for row in data:
         for point in row:
             if not str(point) in data_dict:
