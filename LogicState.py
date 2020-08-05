@@ -36,6 +36,8 @@ DOWNRIGHT, UPRIGHT, UPLEFT, DOWNLEFT= 4, 5, 6, 7
 WATER, LAND, SAND, GRASS = 0, 1, 2, 3
 
 colors = [[0,0,150], [180, 180, 40],  [233, 245, 100], [00, 180, 39],]
+staminagreen = [85, 255, 5]
+staminared = [230, 20, 40]
 
 SQRT2 = 1.42
 
@@ -59,10 +61,18 @@ ANIMATION_SKIP_LEN = 5
 WALKING_LOOP_LEN = 3
 
 SLOW_ANIM_SKIP_LEN = 8
-WATER_ANIM_LEN = 4
+WATER_DANGER_ANIM_LEN = 4
 
-water_detail = [f"data/sprites/swim-detail-{i}.png" for i in range(WATER_ANIM_LEN + 1)]
+WATER_ANIM_LOOP_LEN = 4
 
+
+water_detail = [f"data/sprites/swim-detail-{i}.png" for i in range(WATER_ANIM_LOOP_LEN + 1)]
+
+STAMINA_MAX = 100
+STAMINA_DANGER = 50
+STAM_FULL_DANGER = 25
+
+STAM_DEPLETE_TIMING_LEN = 15
 
 class Player():
     def __init__(self, world_coordinate = [width // 2, height // 2]):
@@ -77,16 +87,23 @@ class Player():
         self.moving = None
         self.sprite = player_anim_sprite[self.mode][1]
 
-        self.water_detail_texture = water_detail[WATER_ANIM_LEN]
+        self.water_detail_texture = water_detail[WATER_ANIM_LOOP_LEN]
         
         self.walking_count = WALKING_LOOP_LEN
-        self.walking_anim_clock = ANIMATION_SKIP_LEN
+        self.walking_anim_wait = ANIMATION_SKIP_LEN
         
-        self.detail_anim_counter = WATER_ANIM_LEN
-        self.detail_anim_clock = SLOW_ANIM_SKIP_LEN
+        self.detail_anim_counter = WATER_ANIM_LOOP_LEN
+        self.detail_anim_wait = SLOW_ANIM_SKIP_LEN
 
         self.land_mode = ON_LAND
+
+        self.Stamina = STAMINA_MAX
+        self.stamina_frame_wait = STAM_DEPLETE_TIMING_LEN
                 
+    def update_movement(self):
+        self.accelerate()
+        self.update_position()
+
     def accelerate(self):
         if self.moving != None:
             if self.land_mode == ON_LAND:
@@ -106,6 +123,30 @@ class Player():
     def update_position(self):
         self.X += self.velocity[0]
         self.Y += self.velocity[1]
+
+    def update_animation(self):
+
+        if self.land_mode == ON_LAND:
+            if self.moving != None:      
+                self.walking_anim_wait -= 1
+                if self.walking_anim_wait < 0:              
+                    self.step_animation()                 
+                    self.walking_anim_wait = ANIMATION_SKIP_LEN
+            else:
+                self.sprite = player_anim_sprite[self.mode][1]
+                self.walking_count = WALKING_LOOP_LEN
+                self.walking_anim_wait = ANIMATION_SKIP_LEN
+
+                    
+        elif self.land_mode == IN_WATER:
+            self.sprite = player_swim_sprite[self.mode]                
+            self.detail_anim_wait -= 1
+            if self.detail_anim_wait < 0:
+                self.detail_step_animation()
+                if self.Stamina < STAMINA_DANGER:
+                    self.detail_anim_wait = WATER_DANGER_ANIM_LEN
+                else:
+                    self.detail_anim_wait = SLOW_ANIM_SKIP_LEN
         
     def step_animation(self):        
         self.walking_count -= 1
@@ -117,8 +158,33 @@ class Player():
     def detail_step_animation(self):        
         self.detail_anim_counter -= 1
         if self.detail_anim_counter < 0:
-            self.detail_anim_counter = WATER_ANIM_LEN
+            self.detail_anim_counter = WATER_ANIM_LOOP_LEN
         self.water_detail_texture = water_detail[self.detail_anim_counter]
+
+    def update_stamina(self):
+        if self.land_mode == IN_WATER:
+            self.deplete_stamina()
+            
+            if (self.Stamina < 0):
+                self.die()
+
+        if self.land_mode == ON_LAND:
+            if (self.Stamina < STAMINA_MAX):
+                self.refill_stamina()
+            
+    def deplete_stamina(self):
+        self.stamina_frame_wait -= 1
+        if self.stamina_frame_wait < 0:
+            self.Stamina -= 1
+            self.stamina_frame_wait = STAM_DEPLETE_TIMING_LEN
+
+    def refill_stamina(self):
+        self.Stamina += 1
+
+    def die(self):
+        if self.land_mode == IN_WATER:              
+            self.viewable = False
+            
 
     def current_tile_index(self):
         
@@ -127,33 +193,7 @@ class Player():
                                                           # conveniently, the player's head will be at about the same position as his feet when he is swimming       
         return int(index_x), int(index_y)
 
-    def update_movement(self):
-        self.accelerate()
-        self.update_position()
-        
     
-
-    def update_animation(self):
-
-        if self.land_mode == ON_LAND:
-            if self.moving != None:      
-                self.walking_anim_clock -= 1
-                if self.walking_anim_clock < 0:              
-                    self.step_animation()                 
-                    self.walking_anim_clock = ANIMATION_SKIP_LEN
-            else:
-                self.sprite = player_anim_sprite[self.mode][1]
-                self.walking_count = WALKING_LOOP_LEN
-                self.walking_anim_clock = ANIMATION_SKIP_LEN
-
-                    
-        if self.land_mode == IN_WATER:
-            print("IN_WATER: 1 : ", self.land_mode )
-            self.sprite = player_swim_sprite[self.mode]                
-            self.detail_anim_clock -= 1
-            if self.detail_anim_clock < 0:
-                self.detail_step_animation()
-                self.detail_anim_clock = SLOW_ANIM_SKIP_LEN
         
 
 class LogicState():
@@ -194,6 +234,7 @@ class LogicState():
         keys = pygame.key.get_pressed()
         
         self.direction_listen(keys)
+        
                 
     def update_logic_state(self):
         active_tile_value = self.Tilemap[self.Player.current_tile_index()]
@@ -203,6 +244,7 @@ class LogicState():
 
         self.Player.update_movement()
         self.Player.update_animation()
+        self.Player.update_stamina()
           
 
     def Draw(self):
@@ -211,55 +253,6 @@ class LogicState():
         self.Render_Tilemap(temp_draw_Tilemap)
 
         self.Draw_Player()
-        
-    def Render_Tilemap(self, temp_draw_Tilemap = [[1,0,1,0],[0,1,0,1],[1,0,1,0],[0,1,0,1]], photomode = COLORS):
-        scanline_x = self.Camera_Offset_X
-        scanline_y = self.Camera_Offset_Y
-        
-        for Left_start_col in temp_draw_Tilemap:
-            for topmost_ID in Left_start_col:
-                if photomode == REALISTIC:
-                    new_surface = pygame.image.load(textures[topmost_ID][1])
-                    self.screen.blit(new_surface, [scanline_x, scanline_y])
-                if photomode == COLORS:
-                    new_rect = pygame.Rect(scanline_x, scanline_y, TILESIZE_X, TILESIZE_Y)
-                    new_surface = pygame.draw.rect(self.screen, colors[topmost_ID], new_rect)
-                    
-                scanline_y += TILESIZE_Y
-                
-                
-            scanline_x += TILESIZE_X
-            scanline_y = self.Camera_Offset_X
-
-            #vertical scan lines!
-                
-    def Draw_Player(self):
-        if self.Player.land_mode == IN_WATER:
-            water_detail_surface = pygame.image.load(self.Player.water_detail_texture)
-            water_detail_surface = water_detail_surface.convert()
-            colorkey = water_detail_surface.get_at((0,0))
-            water_detail_surface.set_colorkey(colorkey, RLEACCEL)
-        
-            self.screen.blit(water_detail_surface, [self.Player.X, self.Player.Y])
-        
-        if self.Player.viewable:
-            
-            player_sprite_surface = pygame.image.load(self.Player.sprite)
-            
-            player_sprite_surface = player_sprite_surface.convert()
-            colorkey = player_sprite_surface.get_at((0,0))
-            player_sprite_surface.set_colorkey(colorkey, RLEACCEL)
-            
-            self.screen.blit(player_sprite_surface, [self.Player.X, self.Player.Y])
-
-        
-
-    def Resize_Tilemap_to_window(self):
-        if self.Tilemap.shape[0] > TILEMAP_W or self.Tilemap.shape[1] > TILEMAP_H:
-            temp_draw_Tilemap = self.Tilemap[:TILEMAP_W, :TILEMAP_H]
-            
-        else: temp_draw_Tilemap = self.Tilemap
-        return temp_draw_Tilemap
 
     def direction_listen(self, keys):
         if keys[K_DOWN] or keys[ord('s')]:
@@ -299,7 +292,64 @@ class LogicState():
         if not keys[K_LEFT] and not keys[K_UP] and not keys[K_RIGHT] and not keys[K_DOWN]:
             if not keys[ord('s')] and not keys[ord('d')] and not keys[ord('w')] and not keys[ord('a')]:
                 self.Player.moving = None
+
+    def Resize_Tilemap_to_window(self):
+        if self.Tilemap.shape[0] > TILEMAP_W or self.Tilemap.shape[1] > TILEMAP_H:
+            temp_draw_Tilemap = self.Tilemap[:TILEMAP_W, :TILEMAP_H]
             
+        else: temp_draw_Tilemap = self.Tilemap
+        return temp_draw_Tilemap
+    
+    def Render_Tilemap(self, temp_draw_Tilemap = [[1,0,1,0],[0,1,0,1],[1,0,1,0],[0,1,0,1]], photomode = COLORS):
+        scanline_x = self.Camera_Offset_X
+        scanline_y = self.Camera_Offset_Y
+        
+        for Left_start_col in temp_draw_Tilemap:
+            for topmost_ID in Left_start_col:
+                if photomode == REALISTIC:
+                    new_surface = pygame.image.load(textures[topmost_ID][1])
+                    self.screen.blit(new_surface, [scanline_x, scanline_y])
+                if photomode == COLORS:
+                    new_rect = pygame.Rect(scanline_x, scanline_y, TILESIZE_X, TILESIZE_Y)
+                    new_surface = pygame.draw.rect(self.screen, colors[topmost_ID], new_rect)
+                    
+                scanline_y += TILESIZE_Y
+                
+                
+            scanline_x += TILESIZE_X
+            scanline_y = self.Camera_Offset_X
+
+            #vertical scan lines!
+                
+    def Draw_Player(self):
+        if self.Player.viewable:
+            if self.Player.land_mode == IN_WATER:
+                water_detail_surface = pygame.image.load(self.Player.water_detail_texture)
+                water_detail_surface = water_detail_surface.convert()
+                colorkey = water_detail_surface.get_at((0,0))
+                water_detail_surface.set_colorkey(colorkey, RLEACCEL)
+            
+                self.screen.blit(water_detail_surface, [self.Player.X, self.Player.Y])
+
+            if self.Player.Stamina < STAMINA_MAX:
+                if self.Player.Stamina < STAM_FULL_DANGER:
+                    pygame.draw.arc(self.screen, staminared, [self.Player.X - 10, self.Player.Y - 8, 10, 10], 1.57, (1.57 + self.Player.Stamina*6.28/100), 2)
+                else:
+                    pygame.draw.arc(self.screen, staminagreen, [self.Player.X - 10, self.Player.Y - 8, 10, 10], 1.57, (1.57 + self.Player.Stamina*6.28/100), 2)
+        
+        
+            
+            player_sprite_surface = pygame.image.load(self.Player.sprite)
+            
+            player_sprite_surface = player_sprite_surface.convert()
+            colorkey = player_sprite_surface.get_at((0,0))
+            player_sprite_surface.set_colorkey(colorkey, RLEACCEL)
+            
+            self.screen.blit(player_sprite_surface, [self.Player.X, self.Player.Y])
+
+        
+
+              
 
     
     
