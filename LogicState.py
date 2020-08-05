@@ -11,10 +11,16 @@ white = 255, 255, 255
 
 background = 0, 140, 178
 
-
-TILESIZE = 8
+TILESIZE = 16
 TILESIZE_X = TILESIZE
-TILESIZE_Y = 5
+TILESIZE_Y = 16
+
+PLAYERSIZE = 16
+PLAYERSIZE_X = PLAYERSIZE
+PLAYERSIZE_Y = PLAYERSIZE
+
+PLAYER_OFFSET_X = PLAYERSIZE_X//2
+PLAYER_OFFSET_Y = PLAYERSIZE_Y*7//9
 
 TILEMAP_W = width // TILESIZE_X + 1
 
@@ -24,9 +30,8 @@ MAP_TOTAL = (TILEMAP_W)*(TILEMAP_H)
 
 COLORS, REALISTIC = 1, 2
 
-DOWN, RIGHT, UP, LEFT, DOWNRIGHT, UPRIGHT, UPLEFT, DOWNLEFT= 0, 1, 2, 3, 4, 5, 6, 7
-
-texture_f_name_list = lambda _list : [f'data/sprites/sprite-{i}-small.png' for i in _list]
+DOWN, RIGHT, UP, LEFT= 0, 1, 2, 3
+DOWNRIGHT, UPRIGHT, UPLEFT, DOWNLEFT= 4, 5, 6, 7
 
 WATER, LAND, SAND, GRASS = 0, 1, 2, 3
 
@@ -34,47 +39,121 @@ colors = [[0,0,150], [180, 180, 40],  [233, 245, 100], [00, 180, 39],]
 
 SQRT2 = 1.42
 
-
-player_anim_sprite = {DOWN: texture_f_name_list([6, 7, 8, 7]),
-                    RIGHT: texture_f_name_list([3, 4, 5, 4]),
-                    UP: texture_f_name_list([0, 1, 2, 1]),
-                    LEFT: texture_f_name_list([9, 10, 11, 10]),
-                    }
+ON_LAND, IN_WATER = 0, 1
 
 walking_velocity = [[0, 1], [1, 0], [0, -1], [-1, 0], [SQRT2/2, SQRT2/2], [SQRT2/2, -SQRT2/2], [-SQRT2/2, -SQRT2/2], [-SQRT2/2, SQRT2/2]]
+swimming_velocity = [[vel[0]*3/4, vel[1]*3/4] for vel in walking_velocity] 
 
-WALKING_LOOP_LENGTH = 3
-ANIMATION_SKIP_LENGTH = 5
+sprite_f_name_list = lambda _list : [f'data/sprites/sprite-{i}-small.png' for i in _list]
+player_anim_sprite = {DOWN: sprite_f_name_list([6, 7, 8, 7]),
+                    RIGHT: sprite_f_name_list([3, 4, 5, 4]),
+                    UP: sprite_f_name_list([0, 1, 2, 1]),
+                    LEFT: sprite_f_name_list([9, 10, 11, 10])}
+
+player_swim_sprite = {DOWN: 'data/sprites/sprite-6-swim.png',
+                    RIGHT: 'data/sprites/sprite-3-swim.png',
+                    UP: 'data/sprites/sprite-0-swim.png',
+                    LEFT: 'data/sprites/sprite-10-swim.png'}
+
+ANIMATION_SKIP_LEN = 5
+WALKING_LOOP_LEN = 3
+
+SLOW_ANIM_SKIP_LEN = 8
+WATER_ANIM_LEN = 4
+
+water_detail = [f"data/sprites/swim-detail-{i}.png" for i in range(WATER_ANIM_LEN + 1)]
+
 
 class Player():
     def __init__(self, world_coordinate = [width // 2, height // 2]):
         self.X = world_coordinate[0]
         self.Y = world_coordinate[1]
+
+        self.screen_X = self.X
+        self.screen_Y = self.Y
         self.velocity = [0,0]
         self.viewable = True
         self.mode = DOWN
-        self.walking = None
+        self.moving = None
         self.sprite = player_anim_sprite[self.mode][1]
-        self.walking_count = WALKING_LOOP_LENGTH
-                
 
-    def step_animation(self):
+        self.water_detail_texture = water_detail[WATER_ANIM_LEN]
         
-        self.walking_count -= 1
-        if self.walking_count < 0:
-            self.walking_count = WALKING_LOOP_LENGTH
+        self.walking_count = WALKING_LOOP_LEN
+        self.walking_anim_clock = ANIMATION_SKIP_LEN
+        
+        self.detail_anim_counter = WATER_ANIM_LEN
+        self.detail_anim_clock = SLOW_ANIM_SKIP_LEN
 
-        self.sprite = player_anim_sprite[self.mode][self.walking_count]
-
+        self.land_mode = ON_LAND
+                
     def accelerate(self):
-        self.velocity = walking_velocity[self.walking]
-        print(self.velocity)
+        if self.moving != None:
+            if self.land_mode == ON_LAND:
+                self.velocity = walking_velocity[self.moving]
+            elif self.land_mode == IN_WATER:
+                self.velocity = swimming_velocity[self.moving]
+        else:
+            if self.land_mode == ON_LAND:                
+                self.velocity = [0,0]
+                
+            elif self.land_mode == IN_WATER:
+                if not abs(self.velocity[0]) + abs(self.velocity[1]) < .02: 
+                    self.velocity = [self.velocity[i]*.95 for i in range(2)]
+                else:
+                    self.velocity = [0,0]
 
     def update_position(self):
         self.X += self.velocity[0]
         self.Y += self.velocity[1]
         
-            
+    def step_animation(self):        
+        self.walking_count -= 1
+        if self.walking_count < 0:
+            self.walking_count = WALKING_LOOP_LEN
+
+        self.sprite = player_anim_sprite[self.mode][self.walking_count]
+
+    def detail_step_animation(self):        
+        self.detail_anim_counter -= 1
+        if self.detail_anim_counter < 0:
+            self.detail_anim_counter = WATER_ANIM_LEN
+        self.water_detail_texture = water_detail[self.detail_anim_counter]
+
+    def current_tile_index(self):
+        
+        index_x = (self.X + PLAYER_OFFSET_X )// TILESIZE_X
+        index_y = (self.Y + PLAYER_OFFSET_Y )// TILESIZE_Y  #Our guy is actually not as big as his tilesize, so place the sensor approximately at his "feet"
+                                                          # conveniently, the player's head will be at about the same position as his feet when he is swimming       
+        return int(index_x), int(index_y)
+
+    def update_movement(self):
+        self.accelerate()
+        self.update_position()
+        
+    
+
+    def update_animation(self):
+
+        if self.land_mode == ON_LAND:
+            if self.moving != None:      
+                self.walking_anim_clock -= 1
+                if self.walking_anim_clock < 0:              
+                    self.step_animation()                 
+                    self.walking_anim_clock = ANIMATION_SKIP_LEN
+            else:
+                self.sprite = player_anim_sprite[self.mode][1]
+                self.walking_count = WALKING_LOOP_LEN
+                self.walking_anim_clock = ANIMATION_SKIP_LEN
+
+                    
+        if self.land_mode == IN_WATER:
+            print("IN_WATER: 1 : ", self.land_mode )
+            self.sprite = player_swim_sprite[self.mode]                
+            self.detail_anim_clock -= 1
+            if self.detail_anim_clock < 0:
+                self.detail_step_animation()
+                self.detail_anim_clock = SLOW_ANIM_SKIP_LEN
         
 
 class LogicState():
@@ -86,8 +165,16 @@ class LogicState():
         self.Tilemap = Tilemap
 
         self.keyup = False
+        self.Camera_Offset_X = 0
+        self.Camera_Offset_Y = 0
 
-        self.time_walk = 5
+        self.Max_Camera_Offset_X = self.Tilemap.shape[0]*TILESIZE_X - width
+        self.Max_Camera_Offset_Y = self.Tilemap.shape[1]*TILESIZE_Y - height
+
+        self.Min_Camera_Offset_X = 0
+        self.Min_Camera_Offset_Y = 0
+
+       
 
     """
     Main Loop
@@ -105,111 +192,115 @@ class LogicState():
                 self.keyup = False
             
         keys = pygame.key.get_pressed()
-            
-        if keys[K_DOWN] or keys[ord('s')]:
-            if keys[K_LEFT] or keys[ord('a')]:
-                self.Player.mode = LEFT
-                self.Player.walking = DOWNLEFT
-                
-            elif keys[K_RIGHT] or keys[ord('d')]:
-                self.Player.mode = DOWN
-                self.Player.walking = DOWNRIGHT
-                
-            else:
-                self.Player.mode = self.Player.walking = DOWN
-                            
-            
-        elif keys[K_RIGHT] or keys[ord('d')]:
-            if keys[K_UP] or keys[ord('w')]:
-                self.Player.mode = RIGHT
-                self.Player.walking = UPRIGHT
-                
-            else:
-                self.Player.mode = self.Player.walking = RIGHT
-                      
-            
-        elif keys[K_UP] or keys[ord('w')]:
-            if keys[K_LEFT] or keys[ord('a')]:
-                self.Player.mode = UP
-                self.Player.walking = UPLEFT
-                
-            else:
-                self.Player.mode = self.Player.walking = UP
-
-        elif keys[K_LEFT] or keys[ord('a')]:
-            self.Player.mode = self.Player.walking = LEFT
-            
-
-        if not keys[K_LEFT] and not keys[K_UP] and not keys[K_RIGHT] and not keys[K_DOWN]:
-            if not keys[ord('s')] and not keys[ord('d')] and not keys[ord('w')] and not keys[ord('a')]:
-                self.Player.walking = None
-            
-
         
+        self.direction_listen(keys)
+                
     def update_logic_state(self):
+        active_tile_value = self.Tilemap[self.Player.current_tile_index()]
+        if active_tile_value == WATER:          
+            self.Player.land_mode = IN_WATER           
+        else: self.Player.land_mode = ON_LAND
 
-        
-        
-        if self.Player.walking != None:
-            self.time_walk -= 1
-            if self.time_walk < 0:
-                
-                self.Player.step_animation()
-                    
-                self.time_walk = 5
-
-                
-            self.Player.accelerate()
-            self.Player.update_position()
-            
-
-        else:
-            self.Player.sprite = player_anim_sprite[self.Player.mode][1]
-            self.Player.velocity = [0,0]
-            
+        self.Player.update_movement()
+        self.Player.update_animation()
+          
 
     def Draw(self):
         temp_draw_Tilemap = self.Resize_Tilemap_to_window()
         
-        self.Render_Tilemap(temp_draw_Tilemap)          
+        self.Render_Tilemap(temp_draw_Tilemap)
 
         self.Draw_Player()
         
-    def Render_Tilemap(self, temp_draw_Tilemap = [[1,0,1],[0,1,0],[1,0,1]], photomode = COLORS):
-
-        screen_offset_x = 0
-        screen_offset_y = 0
+    def Render_Tilemap(self, temp_draw_Tilemap = [[1,0,1,0],[0,1,0,1],[1,0,1,0],[0,1,0,1]], photomode = COLORS):
+        scanline_x = self.Camera_Offset_X
+        scanline_y = self.Camera_Offset_Y
+        
         for Left_start_col in temp_draw_Tilemap:
             for topmost_ID in Left_start_col:
                 if photomode == REALISTIC:
                     new_surface = pygame.image.load(textures[topmost_ID][1])
-                    self.screen.blit(new_surface, [screen_offset_x, screen_offset_y])
+                    self.screen.blit(new_surface, [scanline_x, scanline_y])
                 if photomode == COLORS:
-                    new_rect = pygame.Rect(screen_offset_x, screen_offset_y, TILESIZE_X, TILESIZE_Y)
+                    new_rect = pygame.Rect(scanline_x, scanline_y, TILESIZE_X, TILESIZE_Y)
                     new_surface = pygame.draw.rect(self.screen, colors[topmost_ID], new_rect)
                     
-                screen_offset_y += TILESIZE_Y
+                scanline_y += TILESIZE_Y
                 
-            screen_offset_x += TILESIZE_X
-            screen_offset_y = 0
+                
+            scanline_x += TILESIZE_X
+            scanline_y = self.Camera_Offset_X
 
-             #vertical scan lines!
+            #vertical scan lines!
                 
     def Draw_Player(self):
+        if self.Player.land_mode == IN_WATER:
+            water_detail_surface = pygame.image.load(self.Player.water_detail_texture)
+            water_detail_surface = water_detail_surface.convert()
+            colorkey = water_detail_surface.get_at((0,0))
+            water_detail_surface.set_colorkey(colorkey, RLEACCEL)
+        
+            self.screen.blit(water_detail_surface, [self.Player.X, self.Player.Y])
+        
         if self.Player.viewable:
-            new_surface = pygame.image.load(self.Player.sprite)
-            new_surface = new_surface.convert()
-            colorkey = new_surface.get_at((0,0))
-            new_surface.set_colorkey(colorkey, RLEACCEL)
             
-            self.screen.blit(new_surface, [self.Player.X, self.Player.Y])
+            player_sprite_surface = pygame.image.load(self.Player.sprite)
+            
+            player_sprite_surface = player_sprite_surface.convert()
+            colorkey = player_sprite_surface.get_at((0,0))
+            player_sprite_surface.set_colorkey(colorkey, RLEACCEL)
+            
+            self.screen.blit(player_sprite_surface, [self.Player.X, self.Player.Y])
+
+        
 
     def Resize_Tilemap_to_window(self):
         if self.Tilemap.shape[0] > TILEMAP_W or self.Tilemap.shape[1] > TILEMAP_H:
             temp_draw_Tilemap = self.Tilemap[:TILEMAP_W, :TILEMAP_H]
             
-        else: temp_draw_Tilemap = Tilemap
+        else: temp_draw_Tilemap = self.Tilemap
         return temp_draw_Tilemap
+
+    def direction_listen(self, keys):
+        if keys[K_DOWN] or keys[ord('s')]:
+            if keys[K_LEFT] or keys[ord('a')]:
+                self.Player.mode = LEFT
+                self.Player.moving = DOWNLEFT
+                
+            elif keys[K_RIGHT] or keys[ord('d')]:
+                self.Player.mode = DOWN
+                self.Player.moving = DOWNRIGHT
+                
+            else:
+                self.Player.mode = self.Player.moving = DOWN
+                            
+            
+        elif keys[K_RIGHT] or keys[ord('d')]:
+            if keys[K_UP] or keys[ord('w')]:
+                self.Player.mode = RIGHT
+                self.Player.moving = UPRIGHT
+                
+            else:
+                self.Player.mode = self.Player.moving = RIGHT
+                      
+            
+        elif keys[K_UP] or keys[ord('w')]:
+            if keys[K_LEFT] or keys[ord('a')]:
+                self.Player.mode = LEFT
+                self.Player.moving = UPLEFT
+                
+            else:
+                self.Player.mode = self.Player.moving = UP
+
+        elif keys[K_LEFT] or keys[ord('a')]:
+            self.Player.mode = self.Player.moving = LEFT
+            
+
+        if not keys[K_LEFT] and not keys[K_UP] and not keys[K_RIGHT] and not keys[K_DOWN]:
+            if not keys[ord('s')] and not keys[ord('d')] and not keys[ord('w')] and not keys[ord('a')]:
+                self.Player.moving = None
+            
+
     
     
 def main():

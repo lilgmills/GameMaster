@@ -5,7 +5,7 @@ from pygame.locals import *
 import numpy as np
 import math
 from PIL import Image
-from Logicstate import size, black, white, background, width, height, TILESIZE, TILEMAP_W, TILEMAP_H, Player, Logicstate, COLORS, REALISTIC
+from LogicState import size, black, white, background, width, height, TILESIZE, TILEMAP_W, TILEMAP_H, Player, LogicState
 
 import tilemap_creator as tmapc
 
@@ -29,7 +29,7 @@ def main():
 
     Tmap = np.transpose(worldmap_array) #access column (x) first, then row
 
-    State = Logicstate(main_guy, Tmap)
+    State = LogicState(main_guy, screen, Tmap) # the darkness on the face of the deep
 
     while True:
 
@@ -39,7 +39,7 @@ def main():
 
         State.update_logic_state()
         
-        State.DrawRender(screen)
+        State.Draw()
                 
         pygame.display.flip()
         clock.tick(framerate)
