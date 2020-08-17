@@ -12,7 +12,7 @@ white = 255, 255, 255
 
 background = 0, 140, 178
 
-TILESIZE = 35
+TILESIZE = 16
 TILESIZE_X = TILESIZE
 TILESIZE_Y = TILESIZE
 
@@ -21,7 +21,7 @@ PLAYERSIZE_X = PLAYERSIZE
 PLAYERSIZE_Y = PLAYERSIZE
 
 PLAYER_OFFSET_X = PLAYERSIZE_X//2
-PLAYER_OFFSET_Y = PLAYERSIZE_Y*7//9
+PLAYER_OFFSET_Y = PLAYERSIZE_Y*7//9                                         #The proportional offset of the sprite's feet from the top-left corner of the sprite 
 
 TILEMAP_W = width // TILESIZE_X + 2
 
@@ -32,11 +32,19 @@ MAP_TOTAL = (TILEMAP_W)*(TILEMAP_H)
 DOWN, RIGHT, UP, LEFT= 0, 1, 2, 3
 DOWNRIGHT, UPRIGHT, UPLEFT, DOWNLEFT= 4, 5, 6, 7
 
-WATER, LAND, SAND, GRASS = 0, 1, 2, 3
+WATER, LAND, GRASS, SAND, ROCK, SHALLOWS, TREE, CLIFF = 0, 1, 2, 3, 4, 5, 6, 7
 
-colors = [[0,0,150], [180, 180, 40],  [233, 245, 100], [00, 180, 39],]
+colors = {WATER:[50,50,200],
+          LAND:[180, 180, 40],
+          GRASS:[30, 150, 9],
+          SAND:[233, 245, 100],
+          ROCK:[150, 150, 150],
+          SHALLOWS:[80, 60, 220],
+          TREE:[93, 90, 0],
+          CLIFF:[203, 150, 100]}
+
 staminagreen = [85, 255, 5]
-staminared = [230, 20, 40]
+staminared = [255, 20, 40]
 
 SQRT2 = 1.42
 TWOPI = 6.28
@@ -44,7 +52,7 @@ TWOPI = 6.28
 ON_LAND, IN_WATER = 0, 1
 
 walking_velocity = [[0, 1], [1, 0], [0, -1], [-1, 0], [SQRT2/2, SQRT2/2], [SQRT2/2, -SQRT2/2], [-SQRT2/2, -SQRT2/2], [-SQRT2/2, SQRT2/2]]
-swimming_velocity = [[vel[0]*3/4, vel[1]*3/4] for vel in walking_velocity] 
+swimming_velocity = [[vel[0]*.7, vel[1]*.7] for vel in walking_velocity] 
 
 sprite_f_name_list = lambda _list : [f'data/sprites/sprite-{i}-small.png' for i in _list]
 player_anim_sprite = {DOWN: sprite_f_name_list([6, 7, 8, 7]),
@@ -64,7 +72,6 @@ SLOW_ANIM_SKIP_LEN = 8
 WATER_DANGER_ANIM_LEN = 4
 
 WATER_ANIM_LOOP_LEN = 4
-
 
 water_detail = [f"data/sprites/swim-detail-{i}.png" for i in range(WATER_ANIM_LOOP_LEN + 1)]
 

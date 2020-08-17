@@ -26,11 +26,12 @@ def main():
     main_guy = Player()    
         
     worldmap_array = tmapc.creator('data/region-1.png')
+    worldmap_array = worldmap_array[1:] #remove colorcode row at the top
 
     Tmap = np.transpose(worldmap_array) #access column (x) first, then row
 
     State = LogicState(main_guy, screen, Tmap) # the darkness on the face of the deep
-
+    
     while True:
 
         screen.fill(background)
@@ -42,6 +43,7 @@ def main():
         State.Draw()
                 
         pygame.display.flip()
+        
         clock.tick(framerate)
         
 if __name__ == "__main__":
