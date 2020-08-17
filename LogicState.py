@@ -191,7 +191,7 @@ class Player():
             self.stamina_frame_wait = STAM_DEPLETE_TIMING_LEN
 
     def refill_stamina(self):
-        self.Stamina += 1
+        self.Stamina += 0.5
 
     def update_life_or_death(self):
         if (self.Stamina < 0):
