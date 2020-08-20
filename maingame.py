@@ -23,9 +23,11 @@ set framerate below with clock.tick
 def main():
     pygame.init()
 
-    main_guy = Player()    
+    main_guy = Player()
+
+    fname = os.getcwd() + r"\data\2.png"
         
-    worldmap_array = tmapc.creator('data/region-1.png')
+    worldmap_array = tmapc.creator(fname)
     worldmap_array = worldmap_array[1:] #remove colorcode row at the top
 
     Tmap = np.transpose(worldmap_array) #access column (x) first, then row
