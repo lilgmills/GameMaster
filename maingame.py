@@ -32,7 +32,7 @@ def main():
 
     Tmap = np.transpose(worldmap_array) #access column (x) first, then row
 
-    State = LogicState(main_guy, screen, Tmap) # the darkness on the face of the deep
+    State = LogicState(main_guy, screen, Tmap)
     
     while True:
 
